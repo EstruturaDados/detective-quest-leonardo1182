@@ -1,47 +1,185 @@
+/*Requisitos funcionais
+Seu programa em C deverá:
+Criar uma árvore binária para representar o mapa da mansão.
+     
+Permitir a exploração interativa da mansão a partir do Hall de entrada, escolhendo ir para a esquerda (e) ou para a direita (d).
+     
+Além disso, a estrutura da mansão já vem definida no código, e não é necessário inseri-la manualmente — afinal, ela é criada de modo automático pela função main(), usando a função criarSala().
+ 
+Seu programa em C ainda deverá viabilizar a exploração continua até o jogador alcançar um cômodo que não possua caminhos à esquerda nem à direita (isto é, um nó-folha na árvore). Por fim, o programa exibe o nome de cada sala visitada durante a exploração.
+
+Cada cômodo possui:
+nome: uma string que identifica a sala (por exemplo: Sala de estar, Cozinha ou Jardim).
+
+    Árvore binária: estrutura de dados hierárquica com dois filhos por nó.
+     
+    Structs: Criação de um tipo personalizado (Sala) com campos para nome e ponteiros.
+     
+    Alocação dinâmica: uso de malloc para criação de nós da árvore.
+     
+    Operadores condicionais: controle das decisões do jogador (if, else).
+     
+    Modularização: separação de funcionalidades em funções distintas, com responsabilidades claras.*/
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-// Desafio Detective Quest
-// Tema 4 - Árvores e Tabela Hash
-// Este código inicial serve como base para o desenvolvimento das estruturas de navegação, pistas e suspeitos.
-// Use as instruções de cada região para desenvolver o sistema completo com árvore binária, árvore de busca e tabela hash.
+// --------------------- STRUCT DO NÓ DO MAPA --------------------------
+typedef struct NoMapa {
+    char nome[40];
+    char pista[120];
+    struct NoMapa *esq;
+    struct NoMapa *dir;
+} NoMapa;
 
+// --------------------- STRUCT DA ÁRVORE DE PISTAS ---------------------
+typedef struct NoPista {
+    char pista[120];
+    struct NoPista *esq, *dir;
+} NoPista;
+
+// -------------------- CRIA NÓ DE PISTA --------------------------------
+NoPista* criarNoPista(const char *texto) {
+    NoPista *novo = (NoPista *)malloc(sizeof(NoPista));
+    strcpy(novo->pista, texto);
+    novo->esq = novo->dir = NULL;
+    return novo;
+}
+
+// -------------------- INSERE PISTA (BST ALFABÉTICA) -------------------
+NoPista* inserirPista(NoPista *raiz, const char *texto) {
+    if (raiz == NULL)
+        return criarNoPista(texto);
+
+    int cmp = strcmp(texto, raiz->pista);
+
+    if (cmp < 0)
+        raiz->esq = inserirPista(raiz->esq, texto);
+    else if (cmp > 0)
+        raiz->dir = inserirPista(raiz->dir, texto);
+    // se for igual, não insere (evita duplicata)
+
+    return raiz;
+}
+
+// -------------------- IMPRIME PISTAS EM ORDEM ALFABÉTICA --------------
+void imprimirPistas(NoPista *raiz) {
+    if (!raiz) return;
+
+    imprimirPistas(raiz->esq);
+    printf("- %s\n", raiz->pista);
+    imprimirPistas(raiz->dir);
+}
+
+// -------------------- CRIA NÓ DA ÁRVORE DO MAPA -----------------------
+NoMapa* criarNo(const char *nome, const char *pista) {
+    NoMapa *novo = (NoMapa* ) malloc(sizeof(NoMapa));
+    strcpy(novo->nome, nome);
+    strcpy(novo->pista, pista);
+    novo->esq = novo->dir = NULL;
+    return novo;
+}
+
+// -------------------- CRIA O MAPA COMPLETO ----------------------------
+NoMapa* criarMapa() {
+    NoMapa *hall = criarNo(
+        "Hall de Entrada",
+        "Marcas de passos no tapete."
+    );
+
+    hall->esq = criarNo(
+        "Sala de Jantar",
+        "Copo quebrado no chão."
+    );
+    hall->esq->esq = criarNo(
+        "Cozinha",
+        "Geladeira aberta com comida caída."
+    );
+    hall->esq->dir = criarNo(
+        "Porão",
+        "Caixa quebrada com documentos."
+    );
+
+    hall->dir = criarNo(
+        "Escritório",
+        "Caderno com anotações estranhas."
+    );
+    hall->dir->esq = criarNo(
+        "Biblioteca",
+        "Livro marcado com página suspeita."
+    );
+    hall->dir->dir = criarNo(
+        "Quarto Secreto",
+        "Chave antiga sobre a mesa."
+    );
+
+    return hall;
+}
+
+// -------------------- EXPLORAÇÃO --------------------------------------
+void explorar(NoMapa *atual, NoPista **registro) {
+    int escolha;
+
+    while (1) {
+        printf("\n==============================\n");
+        printf("Você está em: ** %s **\n", atual->nome);
+
+        // REGISTRA A PISTA NA BST
+        if (strlen(atual->pista) > 0) {
+            printf("Pista encontrada: %s\n", atual->pista);
+            *registro = inserirPista(*registro, atual->pista);
+        }
+
+        if (!atual->esq && !atual->dir) {
+            printf("\nNão há saídas. Você chegou ao fim.\n");
+            return;
+        }
+
+        printf("\nPara onde deseja ir?\n");
+        if (atual->esq)
+            printf("1 - Esquerda (%s)\n", atual->esq->nome);
+        if (atual->dir)
+            printf("2 - Direita (%s)\n", atual->dir->nome);
+        printf("0 - Sair\nEscolha: ");
+
+        scanf("%d", &escolha);
+
+        switch (escolha) {
+            case 1:
+                if (atual->esq) atual = atual->esq;
+                break;
+
+            case 2:
+                if (atual->dir) atual = atual->dir;
+                break;
+
+            case 0:
+                printf("Saindo da exploração...\n");
+                return;
+
+            default:
+                printf("Opção inválida!\n");
+        }
+    }
+}
+
+// -------------------- MAIN --------------------------------------------
 int main() {
+    NoMapa *raiz = criarMapa();
+    NoPista *registroPistas = NULL;
 
-    // 🌱 Nível Novato: Mapa da Mansão com Árvore Binária
-    //
-    // - Crie uma struct Sala com nome, e dois ponteiros: esquerda e direita.
-    // - Use funções como criarSala(), conectarSalas() e explorarSalas().
-    // - A árvore pode ser fixa: Hall de Entrada, Biblioteca, Cozinha, Sótão etc.
-    // - O jogador deve poder explorar indo à esquerda (e) ou à direita (d).
-    // - Finalize a exploração com uma opção de saída (s).
-    // - Exiba o nome da sala a cada movimento.
-    // - Use recursão ou laços para caminhar pela árvore.
-    // - Nenhuma inserção dinâmica é necessária neste nível.
+    printf("============================================\n");
+    printf("     Detective Quest - Exploração da Mansão \n");
+    printf("============================================\n\n");
 
-    // 🔍 Nível Aventureiro: Armazenamento de Pistas com Árvore de Busca
-    //
-    // - Crie uma struct Pista com campo texto (string).
-    // - Crie uma árvore binária de busca (BST) para inserir as pistas coletadas.
-    // - Ao visitar salas específicas, adicione pistas automaticamente com inserirBST().
-    // - Implemente uma função para exibir as pistas em ordem alfabética (emOrdem()).
-    // - Utilize alocação dinâmica e comparação de strings (strcmp) para organizar.
-    // - Não precisa remover ou balancear a árvore.
-    // - Use funções para modularizar: inserirPista(), listarPistas().
-    // - A árvore de pistas deve ser exibida quando o jogador quiser revisar evidências.
+    explorar(raiz, &registroPistas);
 
-    // 🧠 Nível Mestre: Relacionamento de Pistas com Suspeitos via Hash
-    //
-    // - Crie uma struct Suspeito contendo nome e lista de pistas associadas.
-    // - Crie uma tabela hash (ex: array de ponteiros para listas encadeadas).
-    // - A chave pode ser o nome do suspeito ou derivada das pistas.
-    // - Implemente uma função inserirHash(pista, suspeito) para registrar relações.
-    // - Crie uma função para mostrar todos os suspeitos e suas respectivas pistas.
-    // - Adicione um contador para saber qual suspeito foi mais citado.
-    // - Exiba ao final o “suspeito mais provável” baseado nas pistas coletadas.
-    // - Para hashing simples, pode usar soma dos valores ASCII do nome ou primeira letra.
-    // - Em caso de colisão, use lista encadeada para tratar.
-    // - Modularize com funções como inicializarHash(), buscarSuspeito(), listarAssociacoes().
+    printf("\n============================================\n");
+    printf("          Pistas encontradas (A-Z)\n");
+    printf("============================================\n");
+
+    imprimirPistas(registroPistas);
 
     return 0;
 }
-
